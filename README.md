@@ -1,27 +1,26 @@
-# Fraud Detection ML Pipeline
+# Fraud Detection Machine Learning Pipeline
 
-An end-to-end machine learning project for detecting potentially fraudulent financial transactions.
+An end-to-end machine learning project for detecting fraudulent financial transactions using Python and Scikit-learn.
 
-The project covers the complete machine learning workflow, starting from **exploratory data analysis (EDA)** and **feature engineering**, followed by **model development and evaluation**, and finally **local deployment** of the trained model.
+The project covers the complete workflow from **exploratory data analysis (EDA)** and **feature engineering** to **data preprocessing, model training, evaluation, and model serialization**.
 
-The goal is to build a practical fraud detection system that can analyze transaction data, identify patterns associated with fraudulent behavior, and make predictions on new transactions.
+The final model uses **Logistic Regression with class balancing** and is implemented inside a Scikit-learn pipeline that combines numerical scaling and categorical encoding.
 
 ---
 
-## Project Overview
+## 📌 Project Overview
 
-Fraud detection is a classification problem where the objective is to distinguish between legitimate and fraudulent financial transactions.
+Financial transaction fraud is a highly imbalanced classification problem where fraudulent transactions represent only a small portion of all transactions.
 
-This project follows a complete machine learning pipeline:
+The objective of this project is to analyze transaction data, identify patterns associated with fraudulent behavior, engineer meaningful features, and train a machine learning model capable of classifying transactions as either legitimate or fraudulent.
+
+The complete workflow is:
 
 ```text
-Raw Transaction Data
+Raw Transaction Dataset
         │
         ▼
 Exploratory Data Analysis
-        │
-        ▼
-Data Cleaning & Preparation
         │
         ▼
 Feature Engineering
@@ -30,135 +29,220 @@ Feature Engineering
 Feature Selection
         │
         ▼
-Machine Learning Model
+Train / Test Split
+        │
+        ▼
+Preprocessing Pipeline
+        │
+        ├── StandardScaler
+        │
+        └── OneHotEncoder
+        │
+        ▼
+Logistic Regression
         │
         ▼
 Model Evaluation
         │
         ▼
-Model Saving
+Save Complete Pipeline
         │
         ▼
-Local Deployment
-        │
-        ▼
-Fraud Prediction Application
+Fraud Detection Model
 ```
 
 ---
 
-## Project Objectives
+# 📊 Dataset
 
-The main objectives of this project are to:
+The dataset contains financial transaction records with information about transaction types, amounts, account balances, and fraud labels.
 
-* Understand the structure and quality of the transaction dataset.
-* Explore patterns and relationships within the data.
-* Identify characteristics associated with fraudulent transactions.
-* Perform data cleaning and preprocessing.
-* Create meaningful features from existing transaction information.
-* Train a machine learning classification model.
-* Evaluate the model using appropriate classification metrics.
-* Save the trained model for later use.
-* Build a local application that can make predictions on new transactions.
+Important features include:
 
----
-
-## Dataset
-
-The project uses a financial transaction dataset containing information about transactions between accounts.
-
-The dataset includes features related to:
-
-* Transaction type
-* Transaction amount
-* Origin account balance before the transaction
-* Origin account balance after the transaction
-* Destination account balance before the transaction
-* Destination account balance after the transaction
-* Fraud labels
+| Feature          | Description                                                      |
+| ---------------- | ---------------------------------------------------------------- |
+| `type`           | Type of financial transaction                                    |
+| `amount`         | Transaction amount                                               |
+| `oldbalanceOrg`  | Origin account balance before the transaction                    |
+| `newbalanceOrig` | Origin account balance after the transaction                     |
+| `oldbalanceDest` | Destination account balance before the transaction               |
+| `newbalanceDest` | Destination account balance after the transaction                |
+| `isFraud`        | Target variable indicating whether the transaction is fraudulent |
 
 The target variable is:
 
 ```text
 isFraud
-```
 
-where:
-
-```text
 0 → Legitimate transaction
 1 → Fraudulent transaction
 ```
 
-> Dataset details and statistics will be documented as the project develops.
-
 ---
 
-# 1. Exploratory Data Analysis
+# 🔎 Exploratory Data Analysis
 
-The first stage of the project is **Exploratory Data Analysis (EDA)**.
+The first stage of the project focuses on understanding the dataset and identifying patterns that could be useful for fraud detection.
 
-The purpose of EDA is to understand the dataset before building a machine learning model.
+## Dataset Inspection
 
-The analysis includes:
+The dataset is initially inspected using:
 
-### Dataset structure
+```python
+df.head()
+df.info()
+df.shape
+df.columns
+```
 
-* Number of rows and columns
+These operations are used to understand:
+
+* Dataset dimensions
 * Column names
 * Data types
-* Missing values
-* Basic statistical summaries
-
-### Target analysis
-
-The distribution of legitimate and fraudulent transactions is investigated to determine whether the dataset is imbalanced.
-
-### Transaction analysis
-
-Different transaction types are analyzed to understand:
-
-* Transaction frequency
-* Fraud frequency
-* Fraud rate by transaction type
-
-For example, the fraud rate can be calculated using:
-
-```python
-df.groupby("type")["isFraud"].mean()
-```
-
-This groups transactions by their type and calculates the average fraud label for each group.
-
-### Numerical analysis
-
-Transaction amounts and account balances are explored using statistical summaries and visualizations.
-
-The project uses plots such as:
-
-* Histograms
-* Box plots / boxen plots
-* Bar charts
-* Count plots
-* Line plots
-* Correlation heatmaps
-
-Libraries used for visualization include:
-
-```python
-matplotlib
-seaborn
-```
+* Sample records
+* Overall structure
 
 ---
 
-# 2. Feature Engineering
+## Missing Value Analysis
 
-After understanding the dataset, additional features are created to provide the machine learning model with more useful information.
+Missing values are checked using:
 
-For example, balance differences are calculated from the original account balances.
+```python
+df.isnull().sum().sum()
+```
 
-### Origin balance difference
+This determines the total number of missing values across the dataset.
+
+---
+
+## Fraud Distribution
+
+The distribution of legitimate and fraudulent transactions is examined using:
+
+```python
+df["isFraud"].value_counts()
+```
+
+The percentage of fraudulent transactions is also calculated.
+
+This is particularly important because fraud detection datasets are usually **highly imbalanced**.
+
+---
+
+# 📈 Transaction Type Analysis
+
+The frequency of each transaction type is visualized using a bar chart.
+
+```python
+df["type"].value_counts().plot(kind="bar")
+```
+
+This provides an overview of the most common transaction types in the dataset.
+
+---
+
+## Fraud Rate by Transaction Type
+
+The fraud rate for each transaction type is calculated using:
+
+```python
+fraudByType = (
+    df.groupby("type")["isFraud"]
+      .mean()
+      .sort_values(ascending=False)
+)
+```
+
+### Why `groupby()`?
+
+`groupby()` divides the dataset into groups based on a column.
+
+In this case:
+
+```python
+df.groupby("type")
+```
+
+creates separate groups for transaction types such as:
+
+```text
+PAYMENT
+TRANSFER
+CASH_OUT
+CASH_IN
+DEBIT
+```
+
+Then:
+
+```python
+["isFraud"].mean()
+```
+
+calculates the average fraud label for each group.
+
+Because:
+
+```text
+0 = legitimate
+1 = fraud
+```
+
+the mean represents the **fraud rate**.
+
+This allows the project to identify which transaction types have a higher concentration of fraudulent activity.
+
+---
+
+# 💰 Transaction Amount Analysis
+
+Statistical information about transaction amounts is explored using:
+
+```python
+df["amount"].describe()
+```
+
+A logarithmic transformation is also used for visualization:
+
+```python
+np.log1p(df["amount"])
+```
+
+This helps visualize the distribution when transaction amounts are highly skewed.
+
+A histogram with KDE is generated using Seaborn:
+
+```python
+sns.histplot(
+    np.log1p(df["amount"]),
+    bins=100,
+    kde=True
+)
+```
+
+The project also uses a boxen plot to compare transaction amounts between legitimate and fraudulent transactions:
+
+```python
+sns.boxenplot(
+    data=df[df["amount"] < 50000],
+    x="isFraud",
+    y="amount"
+)
+```
+
+The amount filter makes the visualization easier to interpret by reducing the effect of extremely large transactions.
+
+---
+
+# 🧮 Feature Engineering
+
+Feature engineering is performed to create additional information from the existing transaction attributes.
+
+Two balance-difference features are created.
+
+## Origin Balance Difference
 
 ```python
 df["balanceDiffOrig"] = (
@@ -168,7 +252,9 @@ df["balanceDiffOrig"] = (
 
 This represents the change in the origin account's balance.
 
-### Destination balance difference
+---
+
+## Destination Balance Difference
 
 ```python
 df["balanceDiffDest"] = (
@@ -178,405 +264,538 @@ df["balanceDiffDest"] = (
 
 This represents the change in the destination account's balance.
 
-These engineered features can help the model identify unusual transaction patterns.
+These engineered features help provide additional information about how money moves between accounts.
 
-Other preprocessing and feature engineering steps will be added as the project develops.
-
----
-
-# 3. Data Preprocessing
-
-Before training the model, the dataset will be prepared for machine learning.
-
-This stage may include:
-
-* Removing unnecessary columns
-* Handling missing values
-* Encoding categorical variables
-* Selecting relevant features
-* Handling extreme values
-* Scaling numerical features when required
-* Splitting the dataset into training and testing sets
-
-The preprocessing strategy will depend on the final machine learning model selected.
+The project also checks for negative balance differences to identify potentially unusual balance behavior.
 
 ---
 
-# 4. Machine Learning Model
+# ⏱️ Fraud Over Time
 
-The next stage is to build a machine learning model capable of classifying transactions as legitimate or fraudulent.
+Fraudulent transactions are analyzed over the transaction `step` variable.
 
-The problem is formulated as a:
-
-**Binary Classification Problem**
-
-```text
-Input:
-Transaction features
-
-        ↓
-
-Machine Learning Model
-
-        ↓
-
-Prediction
-
-0 → Legitimate
-1 → Fraudulent
+```python
+FraudsPerStep = (
+    df[df["isFraud"] == 1]["step"]
+    .value_counts()
+    .sort_index()
+)
 ```
 
-Different classification algorithms may be experimented with and compared during development.
+A line plot is then used to visualize fraud activity over time.
 
-Potential models include:
+```python
+plt.plot(
+    FraudsPerStep.index,
+    FraudsPerStep.values
+)
+```
 
-* Logistic Regression
-* Decision Tree
-* Random Forest
-* Gradient Boosting
-* XGBoost / other boosting algorithms
+After the temporal analysis is completed, the `step` column is removed from the modeling dataset:
 
-The final model will be selected based on appropriate evaluation metrics and practical considerations.
+```python
+df.drop(columns="step", inplace=True)
+```
 
 ---
 
-# 5. Model Evaluation
+# 👤 Account Analysis
 
-Accuracy alone is not sufficient for fraud detection, especially when fraudulent transactions represent a small portion of the dataset.
+The project investigates transaction activity at the account level.
 
-The model will therefore be evaluated using metrics such as:
+### Top senders
 
-### Precision
-
-Measures how many transactions predicted as fraud were actually fraudulent.
-
-```text
-Precision =
-True Positives / (True Positives + False Positives)
+```python
+df["nameOrig"].value_counts().head(10)
 ```
 
-### Recall
+Identifies the most frequently appearing origin accounts.
 
-Measures how many actual fraudulent transactions were successfully detected.
+### Top receivers
 
-```text
-Recall =
-True Positives / (True Positives + False Negatives)
+```python
+df["nameDest"].value_counts().head(10)
 ```
 
-### F1 Score
+Identifies the most frequently appearing destination accounts.
 
-Provides a balance between precision and recall.
+### Accounts involved in fraud
 
-```text
-F1 = 2 × (Precision × Recall)
-     / (Precision + Recall)
+```python
+df[df["isFraud"] == 1]["nameOrig"].value_counts().head(10)
 ```
 
-### Confusion Matrix
+Identifies origin accounts that appear most frequently in fraudulent transactions.
 
-The confusion matrix helps visualize:
+---
+
+# 🔍 Transaction Pattern Analysis
+
+The project focuses on `TRANSFER` and `CASH_OUT` transactions:
+
+```python
+FraudTypes = df[
+    df["type"].isin(["TRANSFER", "CASH_OUT"])
+]
+```
+
+### Why `isin()`?
+
+`isin()` checks whether a value belongs to a specified collection.
+
+For example:
+
+```python
+df["type"].isin(["TRANSFER", "CASH_OUT"])
+```
+
+means:
+
+> Select rows where the transaction type is either `TRANSFER` or `CASH_OUT`.
+
+This is more concise than writing multiple conditions with `|`.
+
+The filtered transactions are then visualized using:
+
+```python
+sns.countplot(
+    data=FraudTypes,
+    x="type",
+    hue="isFraud"
+)
+```
+
+This allows legitimate and fraudulent transactions to be compared within these transaction categories.
+
+---
+
+# 🚨 Suspicious Balance Pattern
+
+The project also investigates transactions where the origin account had a positive balance before the transaction but ended with a zero balance.
+
+```python
+ZeroAfterTransfer = df[
+    (df["oldbalanceOrg"] > 0) &
+    (df["newbalanceOrig"] == 0) &
+    (df["type"].isin(["TRANSFER", "CASH_OUT"]))
+]
+```
+
+This combines multiple conditions to identify a potentially suspicious transaction pattern.
+
+---
+
+# 🔗 Correlation Analysis
+
+Correlation between important numerical variables and the fraud target is calculated using:
+
+```python
+corr = df[
+    [
+        "amount",
+        "oldbalanceOrg",
+        "newbalanceOrig",
+        "oldbalanceDest",
+        "newbalanceDest",
+        "isFraud"
+    ]
+].corr()
+```
+
+The correlation matrix is visualized with a Seaborn heatmap:
+
+```python
+sns.heatmap(
+    corr,
+    annot=True,
+    cmap="coolwarm",
+    fmt=".2f"
+)
+```
+
+This provides a visual overview of linear relationships between the numerical variables.
+
+---
+
+# 🤖 Machine Learning Model
+
+After completing the EDA and feature engineering stages, the project moves to machine learning.
+
+The final model is a:
+
+**Logistic Regression classifier**
+
+Logistic Regression was selected as a classification model for predicting whether a transaction is fraudulent.
+
+---
+
+# 🧹 Feature Selection
+
+The following columns are removed before model training:
+
+```python
+dfModel = df.drop(
+    ["nameOrig", "nameDest", "isFlaggedFraud"],
+    axis=1
+)
+```
+
+The account identifiers `nameOrig` and `nameDest` are removed because they are high-cardinality identifiers rather than useful generalized numerical features for this model.
+
+`isFlaggedFraud` is also excluded from the model features.
+
+The target variable remains:
+
+```python
+y = df["isFraud"]
+```
+
+and the input features are:
+
+```python
+x = dfModel.drop(["isFraud"], axis=1)
+```
+
+---
+
+# ⚙️ Data Preprocessing
+
+The project contains both numerical and categorical features.
+
+### Categorical feature
+
+```python
+String = ["type"]
+```
+
+### Numerical features
+
+```python
+numerical = [
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest"
+]
+```
+
+A `ColumnTransformer` is used to apply the appropriate preprocessing to each feature type.
+
+```python
+preprocessor = ColumnTransformer(
+    transformers=[
+        (
+            "num",
+            StandardScaler(),
+            numerical
+        ),
+        (
+            "Str",
+            OneHotEncoder(drop="first"),
+            String
+        )
+    ],
+    remainder="drop"
+)
+```
+
+### Numerical preprocessing
+
+`StandardScaler` standardizes numerical features so they are placed on a comparable scale.
+
+### Categorical preprocessing
+
+`OneHotEncoder` converts the categorical `type` feature into numerical columns that the machine learning model can use.
+
+`drop="first"` removes one category to avoid redundant dummy variables.
+
+---
+
+# 🔄 Train/Test Split
+
+The dataset is divided into training and testing sets:
+
+```python
+xTrain, xTest, yTrain, yTest = train_test_split(
+    x,
+    y,
+    test_size=0.3,
+    stratify=y
+)
+```
+
+The dataset is split into:
+
+* **70% training data**
+* **30% testing data**
+
+The `stratify=y` parameter is particularly important for this project because the target classes are imbalanced.
+
+It helps maintain a similar fraud/non-fraud class distribution in both the training and testing sets.
+
+---
+
+# 🧠 Machine Learning Pipeline
+
+The preprocessing and model are combined into a single Scikit-learn pipeline:
+
+```python
+pipline = Pipeline([
+    ("prep", preprocessor),
+    (
+        "clf",
+        LogisticRegression(
+            class_weight="balanced",
+            max_iter=1000
+        )
+    )
+])
+```
+
+This pipeline ensures that preprocessing and prediction are performed consistently.
+
+The model uses:
+
+```python
+class_weight="balanced"
+```
+
+to give additional importance to the minority class.
+
+This is useful because fraudulent transactions are significantly less common than legitimate transactions.
+
+The model is then trained using:
+
+```python
+pipline.fit(xTrain, yTrain)
+```
+
+---
+
+# 📊 Model Evaluation
+
+Predictions are generated using:
+
+```python
+y_pred = pipline.predict(xTest)
+```
+
+The model is evaluated using a classification report:
+
+```python
+classification_report(yTest, y_pred)
+```
+
+The classification report provides metrics including:
+
+* Precision
+* Recall
+* F1-score
+* Support
+
+A confusion matrix is also generated:
+
+```python
+confusion_matrix(yTest, y_pred)
+```
+
+This provides a detailed view of:
 
 ```text
                  Predicted
-               Normal  Fraud
+              Normal   Fraud
 
-Actual Normal    TN      FP
+Actual Normal    TN       FP
 
-Actual Fraud     FN      TP
+Actual Fraud     FN       TP
 ```
 
-This is particularly useful for understanding the types of mistakes made by the model.
+The model score is also calculated using:
 
-Additional metrics such as ROC-AUC and Precision-Recall AUC may also be considered.
+```python
+pipline.score(xTest, yTest)
+```
 
 ---
 
-# 6. Model Saving
+# 💾 Model Serialization
 
-Once the final model has been trained and evaluated, it will be saved so that it can be used without retraining every time the application starts.
-
-Possible tools include:
+After training and evaluation, the complete machine learning pipeline is saved using Joblib:
 
 ```python
-joblib
+import joblib
+
+joblib.dump(
+    pipline,
+    "Fraud_detection_pipline.pkl"
+)
 ```
 
-or:
-
-```python
-pickle
-```
-
-The saved model will then be loaded by the local application.
-
----
-
-# 7. Local Deployment
-
-The final stage of the project is to deploy the trained model locally.
-
-The application will allow a user to enter transaction information and receive a prediction from the trained machine learning model.
-
-The workflow will be:
+The saved `.pkl` file contains the complete pipeline, including:
 
 ```text
-User Input
-    │
-    ▼
-Data Preprocessing
-    │
-    ▼
-Trained ML Model
-    │
-    ▼
-Prediction
-    │
-    ├── Legitimate
-    │
-    └── Potential Fraud
+Preprocessing
+     │
+     ├── StandardScaler
+     │
+     └── OneHotEncoder
+     
+     ↓
+
+Logistic Regression
 ```
 
-A lightweight local web framework such as **Streamlit** or **Flask** can be used for the application.
-
-The deployment section will document:
-
-* Loading the trained model
-* Preparing user input
-* Applying the same preprocessing used during training
-* Generating predictions
-* Displaying the result
-* Running the application locally
+This allows the trained model to be loaded later without retraining it.
 
 ---
 
-# 8. Project Structure
+# 🛠️ Technologies Used
 
-The final repository is planned to follow a structure similar to:
+| Technology       | Purpose                                |
+| ---------------- | -------------------------------------- |
+| Python           | Programming language                   |
+| Pandas           | Data manipulation and analysis         |
+| NumPy            | Numerical operations                   |
+| Matplotlib       | Data visualization                     |
+| Seaborn          | Statistical visualization              |
+| Scikit-learn     | Machine learning and preprocessing     |
+| Joblib           | Model serialization                    |
+| Jupyter Notebook | Development and experimentation        |
+| Git / GitHub     | Version control and project management |
+
+---
+
+# 📁 Project Structure
 
 ```text
 fraud-detection-ml-pipeline/
 │
-├── data/
-│   └── dataset.csv
-│
-├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── 02_feature_engineering.ipynb
-│   └── 03_model_training.ipynb
-│
-├── src/
-│   ├── preprocessing.py
-│   ├── feature_engineering.py
-│   ├── train.py
-│   └── predict.py
-│
-├── models/
-│   └── model.pkl
-│
-├── app/
-│   └── app.py
-│
-├── requirements.txt
+├── AIML Dataset.csv
+├── analysis_model.ipynb
+├── Fraud_detection_pipline.pkl
 ├── README.md
-└── .gitignore
+└── requirements.txt
 ```
 
-The exact structure may change as the project develops.
+As the project is extended with a local application, additional files and directories can be added for deployment.
 
 ---
 
-# 9. Technologies Used
+# 🚀 Running the Project
 
-### Programming Language
-
-* Python
-
-### Data Analysis
-
-* Pandas
-* NumPy
-
-### Data Visualization
-
-* Matplotlib
-* Seaborn
-
-### Machine Learning
-
-* Scikit-learn
-* Additional ML libraries if required
-
-### Model Deployment
-
-* Streamlit or Flask
-
-### Development Environment
-
-* Jupyter Notebook
-* Git
-* GitHub
-
----
-
-# 10. Current Progress
-
-The project is being developed incrementally.
-
-### Completed
-
-* [x] Dataset loading
-* [x] Initial dataset inspection
-* [x] Data structure analysis
-* [x] Missing-value analysis
-* [x] Fraud distribution analysis
-* [x] Transaction type analysis
-* [x] Numerical feature analysis
-* [x] Exploratory visualizations
-* [x] Correlation analysis
-* [x] Initial feature engineering
-
-### In Progress
-
-* [ ] Data preprocessing
-* [ ] Feature selection
-* [ ] Train/test split
-* [ ] Machine learning model development
-* [ ] Model comparison
-* [ ] Hyperparameter tuning
-* [ ] Model evaluation
-
-### Planned
-
-* [ ] Final model selection
-* [ ] Model serialization
-* [ ] Local prediction application
-* [ ] Deployment testing
-* [ ] Documentation
-* [ ] Final project cleanup
-
----
-
-# 11. How to Run the Project
-
-Clone the repository:
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/your-username/fraud-detection-ml-pipeline.git
 ```
 
-Navigate to the project:
+## 2. Navigate to the project
 
 ```bash
 cd fraud-detection-ml-pipeline
 ```
 
-Create a virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Activate the environment.
+## 3. Create a virtual environment
 
 ### Windows
 
 ```bash
+python -m venv venv
 venv\Scripts\activate
 ```
 
 ### Linux / macOS
 
 ```bash
+python3 -m venv venv
 source venv/bin/activate
 ```
 
-Install dependencies:
+## 4. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the notebooks for the analysis and model development.
+## 5. Run the notebook
 
-After the application has been implemented, it can be started using the appropriate deployment command, for example:
-
-```bash
-streamlit run app/app.py
-```
-
----
-
-# 12. Important Considerations
-
-Fraud detection is an imbalanced classification problem, so the project does not rely solely on accuracy when evaluating the model.
-
-Particular attention is given to:
-
-* False positives
-* False negatives
-* Precision
-* Recall
-* F1 score
-* Confusion matrix
-* Class imbalance
-
-The preprocessing pipeline used during training should also be identical to the preprocessing applied to new data during deployment.
-
----
-
-# 13. Future Improvements
-
-Possible future improvements include:
-
-* Handling class imbalance with appropriate techniques
-* Advanced feature engineering
-* Feature selection
-* Hyperparameter optimization
-* Comparing multiple machine learning algorithms
-* Cross-validation
-* Threshold optimization
-* Model interpretability
-* SHAP-based explanations
-* API deployment
-* Containerization with Docker
-* Cloud deployment
-* Monitoring model performance
-
----
-
-# 14. Project Goal
-
-The ultimate goal of this project is to transform raw financial transaction data into a complete, usable fraud detection system.
-
-Rather than focusing only on training a machine learning model, the project demonstrates the complete workflow:
+Open:
 
 ```text
-Data
- ↓
-EDA
- ↓
-Feature Engineering
- ↓
-Preprocessing
- ↓
-Model Training
- ↓
-Evaluation
- ↓
-Model Serialization
- ↓
-Local Deployment
- ↓
-Prediction
+analysis_model.ipynb
 ```
 
-This makes the project a practical demonstration of an end-to-end machine learning workflow rather than a standalone model-training experiment.
+and execute the cells sequentially.
+
+The notebook performs the complete analysis, trains the model, evaluates it, and generates:
+
+```text
+Fraud_detection_pipline.pkl
+```
 
 ---
 
-## Author
+# 📌 Key Concepts Demonstrated
 
-**Dante**
+This project demonstrates practical knowledge of:
 
-This project is developed as part of a practical machine learning and data science learning journey.
+* Exploratory Data Analysis
+* DataFrame manipulation with Pandas
+* `groupby()`
+* `value_counts()`
+* Boolean filtering
+* `isin()`
+* Feature engineering
+* Data visualization
+* Distribution analysis
+* Correlation analysis
+* Categorical encoding
+* Numerical scaling
+* Train/test splitting
+* Stratified sampling
+* Machine learning pipelines
+* Logistic Regression
+* Imbalanced classification
+* Precision, Recall and F1-score
+* Confusion matrices
+* Model serialization
+
+---
+
+# 🔮 Future Improvements
+
+Possible extensions to the project include:
+
+* Comparing Logistic Regression with tree-based models
+* Hyperparameter tuning
+* Cross-validation
+* More advanced fraud-specific feature engineering
+* Threshold optimization
+* Precision-Recall curve analysis
+* ROC-AUC evaluation
+* Model explainability
+* Building a local web interface
+* Deploying the model as an API
+* Containerizing the application with Docker
+* Cloud deployment
+
+---
+
+# 🎯 Conclusion
+
+This project demonstrates an end-to-end approach to financial fraud detection using machine learning.
+
+The workflow begins with understanding the transaction data through EDA, continues with feature engineering and preprocessing, and ends with a trained and evaluated Logistic Regression model.
+
+The final Scikit-learn pipeline combines preprocessing and classification into a single reusable object, which is then serialized using Joblib for future prediction and deployment.
+
+The project provides a practical foundation for developing a complete fraud detection application.
+
+---
+
+## 👨‍💻 Author
+
+**Khaled Mansour**
+
+Built as a practical machine learning project to develop experience with data analysis, feature engineering, classification, model evaluation, and deployment.
